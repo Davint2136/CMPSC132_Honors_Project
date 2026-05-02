@@ -4,6 +4,10 @@ from numpy import random
 import time
 from copy import deepcopy
 from pandas import DataFrame
+import sys
+
+# Increase python recursion limit so N=5000 does cause OOM error for quick sort worst case; beware if you're running hardware from before 2000 (if so, why?)
+sys.setrecursionlimit(100000)
 
 class Distribution:
     def __init__(self, n):
@@ -248,7 +252,7 @@ def perform_group_run(n, runs_per_alg):
     #Loop over every algorithm, sorting a random distributions runs_per_alg times. Distribution parameters and sorting metrics get stored after each individual run
     for alg in alg_funcs:
         for i in range(runs_per_alg):
-            print(f"Executing sorting run {run_num}/{total_runs} using {sorter.algs[alg]}")
+            print(f"Executing N={n} sorting run using {sorter.algs[alg]}: {run_num}/{total_runs}")
 
             # Generate distribution and parameters
             dist = Distribution(n)
@@ -263,7 +267,7 @@ def perform_group_run(n, runs_per_alg):
             while single_val_dist:
                 single_val_dist = False
 
-                if dist.cv < 10e-14: #Set detection limit 100x larger than commonly observed CV for this case, CVs for valid distributions will never get this small anyway
+                if dist.cv < 10e-14 or len(np.unique(dist.data)) == 1: #Set detection limit 100x larger than commonly observed CV for this case, CVs for valid distributions will never get this small anyway
                     single_val_dist = True
                     dist = Distribution(n)
                     dist.generate_data()
@@ -305,15 +309,15 @@ def generate_data_file(data, n):
 
 
 def main():
-
     #Change this to add more runs or change the distribution size of existing ones. Each set of runs for a particular n is saved as its own file for later use.
-    DIST_RUN_SIZES = 5000
+    DIST_RUN_SIZES = [100, 1000, 5000]
 
     #Change this to add more data points per set of n-sized distributions.
-    RUNS_PER_ALG = 50
+    RUNS_PER_ALG = 100
 
-    run_stats = perform_group_run(DIST_RUN_SIZES, RUNS_PER_ALG)
-    generate_data_file(run_stats, DIST_RUN_SIZES)
+    for size in DIST_RUN_SIZES:
+        run_stats = perform_group_run(size, RUNS_PER_ALG)
+        generate_data_file(run_stats, size)
 
 if __name__ == "__main__":
     main()
