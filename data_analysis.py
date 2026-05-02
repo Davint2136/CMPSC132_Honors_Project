@@ -5,6 +5,20 @@ import matplotlib.pyplot as plt
 
 
 def make_graph(n):
+    """
+    Generates a 3x4 grid of subplots comparing sorting performance metrics against distribution
+    properties for all five sorting algorithms. Each row represents a performance metric
+    (Time, Comparisons, Assignments) and each column represents a distribution property
+    (CV, Cardinality, Skew, Sortedness). Y-axis is log scaled.
+
+    Inputs:
+        n (int): Distribution size. Used to locate the corresponding .pkl data file.
+
+    Outputs:
+        fig (matplotlib.figure.Figure): The completed figure containing all 12 subplots.
+        sort_run_n{n}.png: Figure saved to the current working directory.
+    """
+
     filename = f"sort_run_n{n}.pkl"
     df = pd.read_pickle(filename)
     
@@ -22,15 +36,18 @@ def make_graph(n):
         for j in range(len(inputs)):
 
             axis = axes[i][j]
+           
             #Plot a line for each algorithm by filtering the dataframe according to the algorithm used, then sort by
             #The distribution parameter for that graph
-
             dist_param = inputs[j]
             sort_metric = outputs[i]
             for algo in algos:
+                
+                #Filter dataframe to just the algorithm being used, sort according to ascending distribution parameter
                 filtered = df[df["Algorithm"] == algo]
                 sort_by_input = filtered.sort_values(by=dist_param)
                 
+                #Format the subplot graph
                 axis.plot(sort_by_input[dist_param], sort_by_input[sort_metric], label=algo, color=colors[algo])
                 axis.tick_params(axis='both', which='major', labelsize=16)
                 axis.tick_params(axis='both', which='minor', labelsize=16)
@@ -48,6 +65,13 @@ def make_graph(n):
 
 
 def main():
+    """
+    Entry point. Generates and saves a graph for each distribution size group.
+
+    Outputs:
+        One .png file per distribution size via make_graph.
+    """
+
     DIST_RUN_SIZES = [100, 1000, 5000]
     for size in DIST_RUN_SIZES:
         graph = make_graph(size)

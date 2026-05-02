@@ -10,6 +10,18 @@ import sys
 sys.setrecursionlimit(100000)
 
 class Distribution:
+    """
+    Represents a randomly generated data distribution with measurable statistical properties.
+    Used to produce test inputs for sorting algorithm analysis.
+
+    Attributes:
+        data (list): The generated distribution of numerical values.
+        n (int): The number of elements in the distribution.
+        sortedness (float): Kendall's tau correlation between the distribution and its sorted version. Range: [-1, 1].
+        skew (float): Statistical skewness of the distribution.
+        cardinality (float): Fraction of unique values in the distribution, normalized by n. Range: [0, 1].
+        cv (float): Coefficient of variation (std / mean), measuring relative spread of the distribution.
+    """
     def __init__(self, n):
         self.data = None
         self.n = n
@@ -17,23 +29,26 @@ class Distribution:
         self.skew = None
         self.cardinality = None
         self.cv = None
-    
-    #Need to randomly vary parameters that govern sortedness, skew, cardinality, and standard deviation, then use those to build the distribution.
-    #Start by setting number of values, then range of values (governs cardinality/standard deviation), then exponentiate by some factor (handles skew),
-    #Then sort the distribution and apply a random number of random swaps (presortedness). Then take measurements.
 
-    """Measurements: 
-        Sortedness [stats.kendalltau(data, sorted data)] --> Self explanatory
-        Skew [stats.skew()] --> Some algorithms may struggle with skewed data
-        Cardinality [Find num of repeat values from number of unique ones] --> Some algorithms may struggle with repeated values
-        Standard deviation [use numpy] --> Some algorithms do better with less dense data"""
 
     def generate_data(self):
         """
-        Use random multipliers for the randint() upper bound of the min and max of the range to ensure cardinality varies. If the multipliers aren't used, cardinality behaves similarly to the birthday problem.
-        In other words, the number of unique values tends to a constant for a fixed range as n approaches the max of the range. If the range max is unchanged for all distributions with n elements, cardinalities will be similar.
-        We want variation of cardinality between distributions of the same n, so the range's size, and thus the range max, must be randomized.
+        Generates a random distribution of n numerical values with randomly varied statistical properties.
+        Randomizes range (affects cardinality and CV), exponent factor (affects skew), and number of swaps (affects sortedness).
+        Results are stored in self.data.
+
+        Inputs:
+            self.n (int): Number of elements to generate.
+
+        Outputs:
+            self.data (list): Populated with n randomly generated numerical values.
         """
+
+        
+        #Use random multipliers for the randint() upper bound of the min and max of the range to ensure cardinality varies. If the multipliers aren't used, cardinality behaves similarly to the birthday problem.
+        #In other words, the number of unique values tends to a constant for a fixed range as n approaches the max of the range. If the range max is unchanged for all distributions with n elements, cardinalities will be similar.
+        #We want variation of cardinality between distributions of the same n, so the range's size, and thus the range max, must be randomized.
+        
 
         # Randomly choose distribution range, exponent factor, and number of swaps
         low = random.randint(0, int(self.n * (0.1 + (random.random() * 5))))
@@ -72,6 +87,19 @@ class Distribution:
         return
     
     def calc_data_params(self):
+        """
+        Calculates and stores statistical properties of the distribution in self.data.
+
+        Inputs:
+            self.data (list): The distribution to analyze.
+
+        Outputs:
+            self.sortedness (float): Kendall's tau between self.data and its sorted version.
+            self.skew (float): Statistical skewness of self.data.
+            self.cardinality (float): Number of unique values divided by n.
+            self.cv (float): Coefficient of variation (std / mean).
+        """
+
         self.sortedness = float(stats.kendalltau(self.data, np.sort(self.data).tolist())[0]) #-1 is least sorted, 1 is most sorted
         self.skew = float(stats.skew(self.data))
         self.cardinality = float((len(np.unique(self.data))) / self.n) #normalize by n
@@ -80,6 +108,16 @@ class Distribution:
 
 
 class Sort:
+    """
+    Contains implementations of five sorting algorithms and infrastructure for measuring their performance.
+
+    Attributes:
+        sort_time (float): Execution time of the most recent sort in seconds.
+        assigns (int): Number of element assignments performed during the most recent sort.
+        comps (int): Number of element comparisons performed during the most recent sort.
+        algs (dict): Maps sorting function references to their human-readable names.
+    """
+
     def __init__(self):
         self.sort_time = None
         self.assigns = 0 # 2 assigns per swap, 1 otherwise (i.e. insertion sort's shifting)
@@ -87,15 +125,40 @@ class Sort:
         self.algs = {self.bubble_sort : "Bubble Sort", self.selection_sort : "Selection Sort", self.insertion_sort : "Insertion Sort", self.merge_sort : "Merge Sort", self.quick_sort : "Quick Sort"}
 
     def reset(self):
+        """
+        Resets all performance counters and sort time to their initial values.
+        Should be called before each sort run to ensure clean measurements.
+
+        Inputs:
+            None
+
+        Outputs:
+            self.assigns (int): Reset to 0.
+            self.comps (int): Reset to 0.
+            self.sort_time (NoneType): Reset to None.
+        """
+
         self.assigns = 0
         self.comps = 0
         self.sort_time = None
     
     def selection_sort(self, numList):
+        """
+        Sorts numList in place using selection sort.
+
+        Inputs:
+            numList (list): The list of values to sort.
+
+        Outputs:
+            numList (list): Sorted in place.
+            self.comps (int): Incremented once per element comparison.
+            self.assigns (int): Incremented by 2 per swap.
+        """
+
         size = len(numList)
         for pos in range(size):
             minpos = pos
-            for seek in range(pos,size):    # find smallest in range
+            for seek in range(pos,size):
                 self.comps += 1
                 if numList[seek] < numList[minpos]:
                     minpos = seek
@@ -105,7 +168,18 @@ class Sort:
         
 
     def insertion_sort(self, numList):
-        
+        """
+        Sorts numList in place using insertion sort. 
+
+        Inputs:
+            numList (list): The list of values to sort.
+
+        Outputs:
+            numList (list): Sorted in place.
+            self.comps (int): Incremented once per element comparison.
+            self.assigns (int): Incremented once per shift and once per insertion.
+        """
+
         size = len(numList)
         for pos in range(1,size):
             value = numList[pos]             
@@ -126,6 +200,17 @@ class Sort:
             numList[pos] = value
     
     def bubble_sort(self, numList):
+        """
+        Sorts numList in place using bubble sort.
+
+        Inputs:
+            numList (list): The list of values to sort.
+
+        Outputs:
+            numList (list): Sorted in place.
+            self.comps (int): Incremented once per element comparison.
+            self.assigns (int): Incremented by 2 per swap.
+        """
         size = len(numList)
         
         sorted = False                     
@@ -140,6 +225,19 @@ class Sort:
                     sorted = False
     
     def merge(self, lst1, lst2):
+        """
+        Merges two sorted lists into a single sorted list. Helper function for merge_sort.
+
+        Inputs:
+            lst1 (list): First sorted sublist.
+            lst2 (list): Second sorted sublist.
+
+        Outputs:
+            merged (list): A new sorted list containing all elements from lst1 and lst2.
+            self.comps (int): Incremented once per element comparison.
+            self.assigns (int): Incremented once per element placed into merged.
+        """
+
         merged = []
         i = 0
         j = 0
@@ -171,6 +269,16 @@ class Sort:
         return merged
     
     def merge_sort(self, numList):
+        """
+        Sorts numList in place using merge sort.
+
+        Inputs:
+            numList (list): The list of values to sort.
+
+        Outputs:
+            numList (list): Sorted in place via slice assignment.
+        """
+
         if len(numList) == 1:
             return numList
         
@@ -183,6 +291,21 @@ class Sort:
 
 
     def partition(self, numList, first, last):
+        """
+        Partitions a sublist around a pivot (the last element) for use in quick_sort.
+        Elements smaller than the pivot are moved left, larger elements right.
+
+        Inputs:
+            numList (list): The list containing the sublist to partition.
+            first (int): Index of the first element of the sublist.
+            last (int): Index of the last element of the sublist, used as the pivot.
+
+        Outputs:
+            left (int): The final index of the pivot after partitioning.
+            self.comps (int): Incremented once per element comparison.
+            self.assigns (int): Incremented by 2 per swap.
+        """
+
         pivot = numList[last]
         left = first
         right = last - 1
@@ -209,6 +332,20 @@ class Sort:
         return left
     
     def quick_sort(self, numList, start=0, end=None):
+        """
+        Sorts numList in place using quicksort with last-element pivot selection.
+
+        Inputs:
+            numList (list): The list of values to sort.
+            start (int): Index of the first element of the current sublist. Defaults to 0.
+            end (int): Index of the last element of the current sublist. Defaults to len(numList) - 1.
+
+        Outputs:
+            numList (list): Sorted in place.
+            self.comps (int): Incremented via partition.
+            self.assigns (int): Incremented via partition.
+        """
+
         if end is None:
             end = len(numList) - 1
         
@@ -222,6 +359,26 @@ class Sort:
         return numList
 
     def run_sort(self, distribution, sort_func):
+        """
+        Runs a single sorting algorithm on a copy of the given distribution and records performance metrics.
+
+        Inputs:
+            distribution (Distribution): The distribution object containing the data to sort and its parameters.
+            sort_func (function): The sorting function to run. Must be one of the Sort class methods.
+
+        Outputs:
+            tuple: Contains the following in order:
+                n (int): Number of elements in the distribution.
+                algorithm (str): Human-readable name of the sorting algorithm.
+                cv (float): Coefficient of variation of the distribution.
+                cardinality (float): Normalized cardinality of the distribution.
+                skew (float): Skewness of the distribution.
+                sortedness (float): Kendall's tau sortedness of the distribution.
+                sort_time (float): Execution time of the sort in seconds.
+                comps (int): Number of element comparisons performed.
+                assigns (int): Number of element assignments performed.
+        """
+
         self.reset() #Just in case
         
         nums = deepcopy(distribution.data)
@@ -237,6 +394,19 @@ class Sort:
 # DATA-PRODUCING/MANAGEMENT FUNCTIONS---------------------------------------------------------------------------
 
 def perform_group_run(n, runs_per_alg):
+    """
+    Runs all five sorting algorithms on randomly generated distributions of size n,
+    collecting performance and distribution metrics for each run.
+
+    Inputs:
+        n (int): Number of elements in each distribution.
+        runs_per_alg (int): Number of sorting runs to perform per algorithm.
+
+    Outputs:
+        run_stats (dict): Dictionary containing lists of metrics for all runs, with keys:
+            n, Algorithm, CV, Cardinality, Skew, Sortedness, Time, Comparisons, Assignments.
+    """
+
     sorter = Sort()
 
     #algorithm functions to loop over (convenient use of that dictionary!)
@@ -247,7 +417,6 @@ def perform_group_run(n, runs_per_alg):
     run_num = 1
     total_runs = len(alg_funcs) * runs_per_alg
 
-    #This is genuinely horrendous, no clue how to streamline this... should I even try?
 
     #Loop over every algorithm, sorting a random distributions runs_per_alg times. Distribution parameters and sorting metrics get stored after each individual run
     for alg in alg_funcs:
@@ -297,6 +466,18 @@ def perform_group_run(n, runs_per_alg):
     return run_stats
 
 def generate_data_file(data, n):
+    """
+    Saves a run statistics dictionary to both .pkl and .csv formats in the current working directory.
+
+    Inputs:
+        data (dict): Run statistics dictionary as returned by perform_group_run.
+        n (int): Distribution size, used to name the output files.
+
+    Outputs:
+        sort_run_n{n}.pkl: Pickle file containing the DataFrame, preserving datatypes.
+        sort_run_n{n}.csv: CSV file for manual viewing.
+    """
+
     df = DataFrame(data)
 
     #Save to .pkl format. Easily read by pandas and preserves datatypes (we can avoid needing to cast everything from strings when reading)
@@ -309,6 +490,13 @@ def generate_data_file(data, n):
 
 
 def main():
+    """
+    Entry point. Runs sorting experiments for each specified distribution size and saves results to disk.
+
+    Outputs:
+        One .pkl and one .csv file per distribution size via generate_data_file.
+    """
+
     #Change this to add more runs or change the distribution size of existing ones. Each set of runs for a particular n is saved as its own file for later use.
     DIST_RUN_SIZES = [100, 1000, 5000]
 
